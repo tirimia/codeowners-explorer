@@ -24,7 +24,8 @@
           pkgs.vscode-marketplace.ms-vscode.extension-test-runner
           pkgs.vscode-marketplace.connor4312.esbuild-problem-matchers
           pkgs.vscode-extensions.dbaeumer.vscode-eslint
-        ];
+          pkgs.vscode-extensions.github.vscode-github-actions
+          ];
       };
     in {
       packages.devCode = devCode;

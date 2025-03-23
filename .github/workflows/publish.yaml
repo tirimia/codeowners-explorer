@@ -1,0 +1,23 @@
+on:
+    push:
+        tags:
+            - 'v*.*.*'
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+            - name: Install PNPM
+              uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+            - name: Install deps
+              run: pnpm i --frozen-lockfile
+            - name: Build extension
+              run: pnpm run build-vsix
+            - name: Release
+              uses: ncipollo/release-action@36e78ab6296394ce36f72f6488e68c2353b50514 # v1
+              with:
+                name: 'codeowners-explorer-${{ github.ref_name }}'
+                artifacts: '*.vsix'
