@@ -1,17 +1,36 @@
 import ignore from 'ignore';
 import * as vscode from 'vscode';
 import { join as pathJoin } from 'node:path';
+import packageJson from '../package.json';
 
+const CONFIG_SECTION = "codeownersExplorer" as const;
+const HIGHLIGHT_COLOR = `${CONFIG_SECTION}.highlight` as const;
+// A bit much, but helps me feel safe we're in sync with what is configured outside
+type ConfigurationProperty = keyof typeof packageJson.contributes.configuration.properties;
+type ConfigurationOption = ConfigurationProperty extends `${typeof CONFIG_SECTION}.${infer Option}` ? Option : never;
+const [BADGE_CONFIG, HIGHLIGHT_PARENTS_CONFIG] = ["badge", "highlightParents"] as const satisfies ConfigurationOption[];
 
 class CodeownersDecorationProvider implements vscode.FileDecorationProvider {
 	private decoratedPaths = new Set<string>();
 	private _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri | vscode.Uri[]>();
-	private highlight = { color: new vscode.ThemeColor("list.focusHighlightForeground") };
+	private highlight: vscode.FileDecoration = this.highlightFromConfig(vscode.workspace.getConfiguration(CONFIG_SECTION));
+
+	highlightFromConfig(cfg: vscode.WorkspaceConfiguration): vscode.FileDecoration {
+		return {
+			color: new vscode.ThemeColor(HIGHLIGHT_COLOR),
+			badge: cfg.get(BADGE_CONFIG),
+			propagate: cfg.get<boolean>(HIGHLIGHT_PARENTS_CONFIG),
+		};
+	}
+
+	reloadConfig() {
+		const cfg = vscode.workspace.getConfiguration(CONFIG_SECTION);
+		this.highlight = this.highlightFromConfig(cfg);
+	}
 
 	// This event is required by the interface
 	readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
-	// This method determines what decoration to apply to each file
 	provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
 		return this.decoratedPaths.has(uri.toString()) ? this.highlight : undefined;
 	}
@@ -60,12 +79,7 @@ async function getMatchingAndParents(root: vscode.Uri, matcher: ignore.Ignore): 
 		const nestedfiles = await Promise.all(
 			children.map(async child => recurse(`${path}/${child[0]}`, child[1])));
 
-		const allPaths = nestedfiles.flat();
-		if (allPaths.length !== 0) {
-			// We want the parent in the list too for highlighting
-			allPaths.push(path);
-		}
-		return allPaths;
+		return nestedfiles.flat();
 	};
 
 	return (await Promise.all(entries.map(entry => recurse(entry[0], entry[1])))).flat();
@@ -82,7 +96,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Track the active editor and cursor position changes
 	let activeEditor = vscode.window.activeTextEditor;
 
-	// Function to update decorations based on cursor position
 	async function updateDecorationsForCursorPosition() {
 		decorationProvider.clearDecorations();
 
@@ -133,6 +146,14 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.window.onDidChangeActiveTextEditor(editor => {
 			activeEditor = editor;
 			decorationProvider.clearDecorations();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration(event => {
+			if (event.affectsConfiguration(CONFIG_SECTION)) {
+				decorationProvider.reloadConfig();
+			}
 		})
 	);
 }

@@ -2,7 +2,7 @@
   "name": "codeowners-explorer",
   "displayName": "codeowners-explorer",
   "description": "See who owns files directly in the explorer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.98.0"
   },
@@ -19,7 +19,33 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": []
+    "colors": [
+      {
+        "id": "codeownersExplorer.highlight",
+        "description": "Used for highlighting matches in the explorer.",
+        "defaults": {
+          "dark": "notificationsInfoIcon.foreground",
+          "light": "notificationsInfoIcon.foreground",
+          "highContrast": "notificationsInfoIcon.foreground",
+          "highContrastLight": "notificationsInfoIcon.foreground"
+        }
+      }
+    ],
+    "configuration": {
+      "title": "CODEOWNERS Explorer",
+      "properties": {
+        "codeownersExplorer.badge": {
+          "type": "string",
+          "default": "",
+          "description": "Badge to add next to owned files."
+        },
+        "codeownersExplorer.highlightParents": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight parent directories for easier scanning."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
